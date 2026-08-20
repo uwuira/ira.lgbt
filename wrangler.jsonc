@@ -1,14 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ira-lgbt",
+  "main": "src/index.js",
   "compatibility_date": "2026-08-19",
 
-  // Assets-only Worker: no `main` script, Cloudflare just serves ./public.
+  // The Worker decides what gets served and reaches ./public through the
+  // ASSETS binding. `run_worker_first` stops Cloudflare from serving files
+  // straight off the edge, which would bypass the host/path rules entirely.
   "assets": {
     "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
     "not_found_handling": "404-page"
   },
+
   "routes": [
+    "ira.lgbt/*",
     "*.ira.lgbt/*"
   ]
 }
