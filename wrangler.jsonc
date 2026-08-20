@@ -9,9 +9,6 @@
     "not_found_handling": "404-page"
   },
   "routes": [
-    {
-      "pattern": "*.ira.lgbt/*",
-      "script": "assets"
-    }
+    "*.ira.lgbt/*"
   ]
 }
