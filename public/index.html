@@ -38,9 +38,49 @@
     a { color: var(--pink); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .accent { color: var(--pink); }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     .muted { color: var(--muted); }
     .likes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 24px; padding: 0; list-style: none; }
     .likes li::before { content: "♡ "; color: var(--pink); }
+
+    /* widgets */
+    .card { border: 1px solid #232323; background: #0d0d0d; border-radius: 12px; padding: 16px; }
+    .track { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; padding: 8px 0; }
+    .track + .track { border-top: 1px solid #1c1c1c; }
+    .track-art { width: 52px; height: 52px; border-radius: 6px; object-fit: cover; display: block; }
+    .track-art-blank { background: #1c1c1c; }
+    .track-lines { min-width: 0; }
+    .track-badge { font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+    .track-live .track-badge { color: var(--pink); }
+    .track-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-meta { font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-progress { grid-column: 1 / -1; margin-top: 6px; }
+    .track-bar { height: 3px; background: #232323; border-radius: 2px; overflow: hidden; }
+    .track-bar-fill { height: 100%; background: var(--pink); border-radius: 2px; }
+    .track-times { display: flex; justify-content: space-between; font-size: 0.74rem;
+                   font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+    #inbox-text { width: 100%; min-height: 92px; resize: vertical; padding: 10px 12px; border-radius: 8px;
+                  border: 1px solid #232323; background: #080808; color: #eee; font: inherit; }
+    #inbox-text:focus-visible, #draw:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+    .tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .tools label { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    #draw { width: 100%; aspect-ratio: 8 / 5; border: 1px solid #232323; border-radius: 8px;
+            background: #0d0d0d; touch-action: none; cursor: crosshair; display: block; }
+    #pen-color { width: 34px; height: 28px; padding: 0; border: 1px solid #232323; background: none; border-radius: 6px; }
+    button, summary.button { font: inherit; font-size: 0.85rem; padding: 6px 13px; border-radius: 7px;
+             border: 1px solid #232323; background: #171717; color: #ddd; cursor: pointer; }
+    button:hover, summary.button:hover { border-color: var(--pink); color: var(--pink); }
+    button:disabled { opacity: 0.45; cursor: default; border-color: #232323; color: #ddd; }
+    button[aria-pressed="true"] { border-color: var(--pink); color: var(--pink); }
+    #inbox-send { padding: 8px 20px; }
+    .inbox-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+    .inbox-status { font-size: 0.88rem; color: var(--muted); }
+    .inbox-status.good { color: #7ee787; }
+    .inbox-status.bad { color: #ff8080; }
+    details.draw { margin-top: 12px; }
+    details.draw > summary { list-style: none; display: inline-block; }
+    details.draw > summary::-webkit-details-marker { display: none; }
   </style>
 </head>
 <body>
@@ -85,6 +125,42 @@
       <li>invincible</li>
     </ul>
 
+    <h2>what i'm listening to</h2>
+    <section id="spotify" class="card" hidden>
+      <div id="spotify-tracks"></div>
+    </section>
+    <script type="application/json" id="spotify-state">null</script>
+
+    <h2>send me something</h2>
+    <section class="card">
+      <p class="muted" style="margin-top:0">
+        anonymous messages, maybe i'll reply to yours on bluesky if it's not dumb
+      </p>
+
+      <form id="inbox-form">
+        <label class="visually-hidden" for="inbox-text">your message</label>
+        <textarea id="inbox-text" maxlength="1000" placeholder="say hi, leave a thought, anything"></textarea>
+
+        <details class="draw">
+          <summary class="button">✎ draw something</summary>
+          <div class="tools">
+            <label>colour <input type="color" id="pen-color" value="#ff8fc7"></label>
+            <label>size <input type="range" id="pen-size" min="1" max="24" value="4"></label>
+            <button type="button" id="eraser" aria-pressed="false">eraser</button>
+            <button type="button" id="undo" disabled>undo</button>
+            <button type="button" id="clear">clear</button>
+          </div>
+          <canvas id="draw" aria-label="drawing canvas"></canvas>
+        </details>
+
+        <div class="inbox-foot">
+          <button type="submit" id="inbox-send">send</button>
+          <span class="muted" id="inbox-count">0/1000</span>
+          <span class="inbox-status" id="inbox-status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
     <h2>my stuffs</h2>
     <p>
       bluesky: <a href="https://bsky.app/profile/ira.lgbt">@ira.lgbt</a><br>
@@ -95,5 +171,7 @@
       pronouns.page: <a href="https://en.pronouns.page/@iraira">en.pronouns.page/@iraira</a>
     </p>
   </main>
+
+  <script type="module" src="/widgets.js"></script>
 </body>
 </html>

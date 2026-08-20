@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>inbox — ira.lgbt</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.jpg" type="image/jpg">
+  <meta name="theme-color" content="#ff8fc7">
+  <style>
+    :root { color-scheme: dark; --pink: #ff8fc7; --muted: #9a9a9a; --line: #232323; --card: #101010; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #000; color: #eee; font: 15px/1.6 system-ui, sans-serif; }
+    main { width: min(760px, calc(100% - 32px)); margin: 40px auto 80px; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    h2 { font-size: 1rem; color: var(--pink); margin: 40px 0 12px; }
+    a { color: var(--pink); }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    button { font: inherit; font-size: 0.82rem; padding: 5px 11px; border-radius: 6px;
+             border: 1px solid var(--line); background: #171717; color: #ddd; cursor: pointer; }
+    button:hover { border-color: var(--pink); color: var(--pink); }
+    button:disabled { opacity: 0.45; cursor: default; border-color: var(--line); color: #ddd; }
+    button.danger:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+    .card { border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+            padding: 14px 16px; margin-bottom: 12px; }
+    .card.unread { border-left: 3px solid var(--pink); }
+    .card .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+    .card img { max-width: 100%; border-radius: 8px; background: #0d0d0d; margin: 8px 0; display: block; }
+    .ids { font-family: ui-monospace, monospace; font-size: 0.76rem; color: var(--muted);
+           overflow-wrap: anywhere; }
+    .actions { margin-top: 10px; }
+
+    .block { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+             border-bottom: 1px solid var(--line); padding: 9px 0; }
+    .block code { font-size: 0.78rem; overflow-wrap: anywhere; }
+    .empty { color: var(--muted); padding: 20px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>inbox</h1>
+    <p class="muted" id="summary">loading…</p>
+
+    <div class="row">
+      <button id="refresh">refresh</button>
+      <button id="seen">mark all read</button>
+    </div>
+
+    <h2>messages</h2>
+    <div id="submissions"><p class="empty">loading…</p></div>
+    <button id="more" hidden>load more</button>
+
+    <h2>blocked</h2>
+    <div id="blocks"><p class="empty">loading…</p></div>
+  </main>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const submissionsEl = $("submissions");
+    const blocksEl = $("blocks");
+
+    let cursor = null;
+
+    const api = async (path, options) => {
+      const res = await fetch(path, { credentials: "same-origin", ...options });
+      if (!res.ok) throw new Error(`${path} → ${res.status}`);
+      return res.json();
+    };
+
+    const post = (path, body) =>
+      api(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+
+    const el = (tag, props = {}, children = []) => {
+      const node = Object.assign(document.createElement(tag), props);
+      for (const child of children) node.append(child);
+      return node;
+    };
+
+    const when = (ms) => {
+      const date = new Date(ms);
+      const mins = Math.round((Date.now() - ms) / 60000);
+      const ago =
+        mins < 1 ? "just now"
+        : mins < 60 ? `${mins}m ago`
+        : mins < 1440 ? `${Math.round(mins / 60)}h ago`
+        : `${Math.round(mins / 1440)}d ago`;
+      return `${ago} · ${date.toLocaleString()}`;
+    };
+
+    function card(submission) {
+      const node = el("div", { className: `card${submission.readAt ? "" : " unread"}` });
+
+      node.append(
+        el("div", { className: "muted", textContent: when(submission.createdAt) }),
+      );
+
+      // textContent, never innerHTML — this is text a stranger wrote.
+      if (submission.text) node.append(el("div", { className: "text", textContent: submission.text }));
+
+      if (submission.drawingUrl) {
+        node.append(el("img", { src: submission.drawingUrl, alt: "drawing", loading: "lazy" }));
+      }
+
+      node.append(
+        el("div", {
+          className: "ids",
+          textContent:
+            `sender ${submission.senderId} · ip ${submission.ipHash}` +
+            (submission.country ? ` · ${submission.country}` : ""),
+        }),
+      );
+
+      const blockSender = el("button", { textContent: "block sender" });
+      blockSender.onclick = () => doBlock("sender", submission.senderId);
+
+      const blockIp = el("button", { textContent: "block ip" });
+      blockIp.onclick = () => doBlock("ip", submission.ipHash);
+
+      const remove = el("button", { textContent: "delete", className: "danger" });
+      remove.onclick = async () => {
+        if (!confirm("delete this?")) return;
+        await api(`/admin/api/submissions/${submission.id}`, { method: "DELETE" });
+        reload();
+      };
+
+      node.append(el("div", { className: "row actions" }, [blockSender, blockIp, remove]));
+      return node;
+    }
+
+    async function doBlock(kind, value) {
+      const note = prompt(`note for this ${kind} block (optional)`) ?? "";
+      await post("/admin/api/block", { kind, value, note });
+      loadBlocks();
+    }
+
+    async function loadSubmissions(append = false) {
+      const query = new URLSearchParams({ limit: "25" });
+      if (append && cursor) query.set("cursor", cursor);
+
+      const data = await api(`/admin/api/submissions?${query}`);
+      cursor = data.cursor;
+
+      if (!append) submissionsEl.replaceChildren();
+      if (!data.submissions.length && !append) {
+        submissionsEl.append(el("p", { className: "empty", textContent: "nothing yet" }));
+      }
+      for (const submission of data.submissions) submissionsEl.append(card(submission));
+
+      $("more").hidden = !cursor;
+      $("summary").textContent = `${data.unread} unread`;
+    }
+
+    async function loadBlocks() {
+      const { blocks } = await api("/admin/api/blocks");
+      blocksEl.replaceChildren();
+
+      if (!blocks.length) {
+        blocksEl.append(el("p", { className: "empty", textContent: "nobody" }));
+        return;
+      }
+
+      for (const entry of blocks) {
+        const label = el("div", {}, [
+          el("code", { textContent: `${entry.kind}: ${entry.value}` }),
+          el("div", { className: "muted", textContent: entry.note || "" }),
+        ]);
+
+        const undo = el("button", { textContent: "unblock" });
+        undo.onclick = async () => {
+          await post("/admin/api/unblock", { kind: entry.kind, value: entry.value });
+          loadBlocks();
+        };
+
+        blocksEl.append(el("div", { className: "block" }, [label, undo]));
+      }
+    }
+
+    const reload = () => {
+      cursor = null;
+      return Promise.all([loadSubmissions(), loadBlocks()]).catch((error) => {
+        $("summary").textContent = `something broke: ${error.message}`;
+      });
+    };
+
+    $("refresh").onclick = reload;
+    $("more").onclick = () => loadSubmissions(true);
+    $("seen").onclick = async () => {
+      await post("/admin/api/seen");
+      reload();
+    };
+
+    reload();
+  </script>
+</body>
+</html>

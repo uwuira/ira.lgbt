@@ -17,5 +17,33 @@
   "routes": [
     "ira.lgbt/*",
     "*.ira.lgbt/*"
-  ]
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "6a305adac8ec482eba72422ce34fe87b"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ira-lgbt",
+      "database_id": "4b1ac574-e42a-46d1-860b-857428ce1d3e",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "DRAWINGS",
+      "bucket_name": "ira-lgbt-drawings"
+    }
+  ],
+
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://uwuumoe.cloudflareaccess.com",
+    "ACCESS_AUD": "85f47473ea25ef6785bf797ed118cdc3bcee62d7612a956b2f9775bc8d9e66e8"
+  }
 }

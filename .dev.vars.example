@@ -1,0 +1,15 @@
+# Copy to .dev.vars (gitignored, never uploaded by wrangler) for `npm run dev`.
+
+SENDER_SECRET=any-value-for-local
+IP_SALT=any-value-for-local
+
+# Opens /admin locally without a Cloudflare Access login, because Access
+# cannot sit in front of `wrangler dev`. Must be exactly "true".
+# NEVER set this as a deployed var or secret — it would make /admin public.
+ADMIN_DEV_BYPASS=true
+
+# Optional — without these the Spotify widget just hides itself.
+# `npm run spotify:auth` prints them.
+# SPOTIFY_CLIENT_ID=
+# SPOTIFY_CLIENT_SECRET=
+# SPOTIFY_REFRESH_TOKEN=
