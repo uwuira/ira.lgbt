@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ira-lgbt",
+  "compatibility_date": "2026-08-19",
+
+  // Assets-only Worker: no `main` script, Cloudflare just serves ./public.
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    {
+      "pattern": "*.ira.lgbt/*",
+      "script": "assets"
+    }
+  ]
+}
