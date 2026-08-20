@@ -26,7 +26,6 @@
 
     .card { border: 1px solid var(--line); background: var(--card); border-radius: 10px;
             padding: 14px 16px; margin-bottom: 12px; }
-    .card.unread { border-left: 3px solid var(--pink); }
     .card .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
     .card img { max-width: 100%; border-radius: 8px; background: #0d0d0d; margin: 8px 0; display: block; }
     .ids { font-family: ui-monospace, monospace; font-size: 0.76rem; color: var(--muted);
@@ -94,12 +93,16 @@
       return `${ago} · ${date.toLocaleString()}`;
     };
 
+    const headerText = (s) =>
+      `${when(s.createdAt)} · ${s.readAt ? "read" : "unread"}`;
+
+    const readLabel = (s) => (s.readAt ? "mark unread" : "mark read");
+
     function card(submission) {
       const node = el("div", { className: `card${submission.readAt ? "" : " unread"}` });
 
-      node.append(
-        el("div", { className: "muted", textContent: when(submission.createdAt) }),
-      );
+      const header = el("div", { className: "muted", textContent: headerText(submission) });
+      node.append(header);
 
       // textContent, never innerHTML — this is text a stranger wrote.
       if (submission.text) node.append(el("div", { className: "text", textContent: submission.text }));
@@ -130,7 +133,30 @@
         reload();
       };
 
-      node.append(el("div", { className: "row actions" }, [blockSender, blockIp, remove]));
+      const toggleRead = el("button", { textContent: readLabel(submission) });
+      toggleRead.onclick = async () => {
+        toggleRead.disabled = true;
+        try {
+          // The card is updated in place rather than reloading the list, so
+          // marking something read does not throw away your scroll position
+          // or whatever you had already paged in.
+          const data = await post(`/admin/api/submissions/${submission.id}/read`, {
+            read: !submission.readAt,
+          });
+
+          submission.readAt = data.readAt;
+          header.textContent = headerText(submission);
+          toggleRead.textContent = readLabel(submission);
+          node.className = `card${submission.readAt ? "" : " unread"}`;
+          $("summary").textContent = `${data.unread} unread`;
+        } finally {
+          toggleRead.disabled = false;
+        }
+      };
+
+      node.append(
+        el("div", { className: "row actions" }, [toggleRead, blockSender, blockIp, remove]),
+      );
       return node;
     }
 

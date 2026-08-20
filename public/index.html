@@ -59,6 +59,15 @@
     .track-bar-fill { height: 100%; background: var(--pink); border-radius: 2px; }
     .track-times { display: flex; justify-content: space-between; font-size: 0.74rem;
                    font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .track-more { border-top: 1px solid #1c1c1c; margin-top: 8px; }
+    .track-more-toggle { display: block; cursor: pointer; padding: 9px 0 3px; font-size: 0.8rem;
+                         color: var(--muted); list-style: none; }
+    .track-more-toggle::-webkit-details-marker { display: none; }
+    .track-more-toggle::before { content: "▸"; display: inline-block; width: 1.1em; }
+    .track-more[open] > .track-more-toggle::before { content: "▾"; }
+    .track-more-toggle:hover { color: var(--pink); }
+    .track-more-toggle:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+    .track-more-list { max-height: 420px; overflow-y: auto; }
 
     #inbox-text { width: 100%; min-height: 92px; resize: vertical; padding: 10px 12px; border-radius: 8px;
                   border: 1px solid #232323; background: #080808; color: #eee; font: inherit; }
@@ -111,7 +120,7 @@
       <li>detroit: become human</li>
     </ul>
 
-    <h2>shows / movies / anime / stuff</h2>
+    <h2>shows / movies / anime</h2>
     <ul class="likes">
       <li>breaking bad</li>
       <li>mr. robot</li>

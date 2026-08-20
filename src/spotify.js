@@ -26,6 +26,11 @@ export const STATE_CACHE_KEY = "https://spotify-widget.ira.lgbt/state";
 
 const FETCHED_AT_HEADER = "x-fetched-at";
 
+// How much listening history to carry. Only the first two or three rows are
+// ever on screen; the rest sit behind a dropdown, so this is the size of that
+// dropdown rather than the size of the widget.
+export const RECENT_LIMIT = 20;
+
 const EMPTY = { playing: null, recent: [] };
 
 /** Spotify may hand back a new refresh token; if it ever did, KV wins. */
@@ -128,7 +133,7 @@ export async function spotifyWidget(env, { fetchImpl = fetch } = {}) {
 
     const [nowRes, recentRes] = await Promise.all([
       callSpotify(`${NOW_PLAYING_URL}?additional_types=track,episode`, env, fetchImpl, tokenRef),
-      callSpotify(`${RECENT_URL}?limit=2`, env, fetchImpl, tokenRef),
+      callSpotify(`${RECENT_URL}?limit=${RECENT_LIMIT}`, env, fetchImpl, tokenRef),
     ]);
 
     let playing = null;
@@ -146,8 +151,8 @@ export async function spotifyWidget(env, { fetchImpl = fetch } = {}) {
         .filter(Boolean);
     }
 
-    // Two slots total. A current track takes one of them.
-    return { playing, recent: history.slice(0, playing ? 1 : 2) };
+    // The full history travels; the renderer decides how much of it shows.
+    return { playing, recent: history.slice(0, RECENT_LIMIT) };
   } catch {
     return EMPTY;
   }

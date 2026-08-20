@@ -195,3 +195,111 @@ describe("playbackAt — what the bar draws between polls", () => {
     expect(back.percent).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("how much of the history is on show", () => {
+  const history = (n) =>
+    Array.from({ length: n }, (_, i) =>
+      track({ title: `old ${i + 1}`, playedAt: new Date(Date.now() - (i + 1) * 60_000).toISOString() }),
+    );
+
+  const rowsIn = (html) => html.match(/<div class="track(?:\s|")/g)?.length ?? 0;
+  const visiblePart = (html) => html.split("<details")[0];
+  const hiddenPart = (html) => html.split("<details")[1] ?? "";
+
+  test("nothing playing: three recent tracks are visible", () => {
+    const html = renderTracks({ playing: null, recent: history(20), staleMs: 0 });
+    expect(rowsIn(visiblePart(html))).toBe(3);
+    expect(visiblePart(html)).toContain("old 3");
+    expect(visiblePart(html)).not.toContain("old 4");
+  });
+
+  test("something playing: the current track plus two recent ones", () => {
+    const html = renderTracks({
+      playing: track({ title: "right now", progressMs: 0 }),
+      recent: history(20),
+      staleMs: 0,
+    });
+
+    expect(rowsIn(visiblePart(html))).toBe(3);
+    expect(visiblePart(html)).toContain("right now");
+    expect(visiblePart(html)).toContain("old 2");
+    expect(visiblePart(html)).not.toContain("old 3");
+  });
+
+  test("the rest go behind a dropdown", () => {
+    const html = renderTracks({ playing: null, recent: history(20), staleMs: 0 });
+
+    expect(html).toContain("<details");
+    expect(html).toContain("<summary");
+    expect(rowsIn(hiddenPart(html))).toBe(17);
+    expect(hiddenPart(html)).toContain("old 20");
+  });
+
+  test("the dropdown says how many it is hiding", () => {
+    const playing = renderTracks({
+      playing: track({ title: "right now", progressMs: 0 }),
+      recent: history(20),
+      staleMs: 0,
+    });
+    expect(playing).toContain("18 more");
+
+    const idle = renderTracks({ playing: null, recent: history(20), staleMs: 0 });
+    expect(idle).toContain("17 more");
+  });
+
+  test("every one of the twenty is rendered somewhere", () => {
+    const html = renderTracks({ playing: null, recent: history(20), staleMs: 0 });
+    expect(rowsIn(html)).toBe(20);
+    for (let i = 1; i <= 20; i++) expect(html).toContain(`old ${i}`);
+  });
+
+  test("the dropdown is closed to begin with", () => {
+    const html = renderTracks({ playing: null, recent: history(20), staleMs: 0 });
+    expect(html).not.toMatch(/<details[^>]*\sopen/);
+  });
+
+  test("no dropdown at all when everything already fits", () => {
+    const html = renderTracks({ playing: null, recent: history(3), staleMs: 0 });
+    expect(html).not.toContain("<details");
+    expect(rowsIn(html)).toBe(3);
+  });
+
+  test("no dropdown when there is exactly one row too few to need one", () => {
+    const html = renderTracks({
+      playing: track({ title: "right now", progressMs: 0 }),
+      recent: history(2),
+      staleMs: 0,
+    });
+    expect(html).not.toContain("<details");
+  });
+
+  test("a single hidden track is announced in the singular", () => {
+    const html = renderTracks({ playing: null, recent: history(4), staleMs: 0 });
+    expect(html).toContain("1 more");
+    expect(html).not.toContain("1 mores");
+  });
+
+  test("copes with less history than there are slots", () => {
+    const html = renderTracks({ playing: null, recent: history(1), staleMs: 0 });
+    expect(rowsIn(html)).toBe(1);
+    expect(html).not.toContain("<details");
+  });
+
+  test("only the playing track is live, however deep the list", () => {
+    const html = renderTracks({
+      playing: track({ title: "right now", progressMs: 0 }),
+      recent: history(20),
+      staleMs: 0,
+    });
+    expect(html.match(/track-live/g)).toHaveLength(1);
+  });
+
+  test("hidden tracks are escaped too", () => {
+    const nasty = history(20);
+    nasty[19] = track({ title: "<img src=x onerror=alert(1)>", playedAt: new Date().toISOString() });
+
+    const html = renderTracks({ playing: null, recent: nasty, staleMs: 0 });
+    expect(html).not.toContain("<img src=x onerror");
+    expect(html).toContain("&lt;img src=x");
+  });
+});

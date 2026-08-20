@@ -330,3 +330,112 @@ describe("unknown admin routes", () => {
     expect((await call("/admin/api/block")).status).toBe(405);
   });
 });
+
+describe("marking one message read", () => {
+  const list = async () => (await (await call("/admin/api/submissions")).json()).submissions;
+
+  const setRead = (id, read) =>
+    call(`/admin/api/submissions/${id}/read`, { method: "POST", body: { read } });
+
+  test("stamps just that one, and leaves the others alone", async () => {
+    await submit({ text: "one" });
+    await submit({ text: "two" });
+
+    const before = await list();
+    expect(before.every((s) => s.readAt === null)).toBe(true);
+
+    const res = await setRead(before[0].id, true);
+    expect(res.status).toBe(200);
+
+    const after = await list();
+    expect(after.find((s) => s.id === before[0].id).readAt).toBeGreaterThan(0);
+    expect(after.find((s) => s.id === before[1].id).readAt).toBe(null);
+  });
+
+  test("the unread count drops by exactly one", async () => {
+    await submit({ text: "one" });
+    await submit({ text: "two" });
+    await submit({ text: "three" });
+
+    const [first] = await list();
+    await setRead(first.id, true);
+
+    const { unread } = await (await call("/admin/api/submissions")).json();
+    expect(unread).toBe(2);
+  });
+
+  test("hands back the new state so the page need not reload", async () => {
+    await submit({ text: "one" });
+    await submit({ text: "two" });
+
+    const [first] = await list();
+    const body = await (await setRead(first.id, true)).json();
+
+    expect(body.ok).toBe(true);
+    expect(body.readAt).toBeGreaterThan(0);
+    expect(body.unread).toBe(1);
+  });
+
+  test("can be put back to unread again", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+
+    await setRead(only.id, true);
+    const body = await (await setRead(only.id, false)).json();
+
+    expect(body.readAt).toBe(null);
+    expect(body.unread).toBe(1);
+    expect((await list())[0].readAt).toBe(null);
+  });
+
+  test("defaults to marking read when the body says nothing", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+
+    const res = await call(`/admin/api/submissions/${only.id}/read`, { method: "POST" });
+    expect(res.status).toBe(200);
+    expect((await list())[0].readAt).toBeGreaterThan(0);
+  });
+
+  test("marking read twice is not an error", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+
+    await setRead(only.id, true);
+    expect((await setRead(only.id, true)).status).toBe(200);
+  });
+
+  test("404s for a message that is not there", async () => {
+    expect((await setRead("does-not-exist", true)).status).toBe(404);
+    expect((await setRead("%", true)).status).toBe(404);
+  });
+
+  test("an outsider cannot mark anything", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+
+    const res = await call(`/admin/api/submissions/${only.id}/read`, {
+      token: null,
+      method: "POST",
+      body: { read: true },
+    });
+
+    expect(res.status).toBe(403);
+    expect((await list())[0].readAt).toBe(null);
+  });
+
+  test("rejects the wrong method", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+    expect((await call(`/admin/api/submissions/${only.id}/read`)).status).toBe(405);
+  });
+
+  test("does not collide with deleting the same message", async () => {
+    await submit({ text: "one" });
+    const [only] = await list();
+
+    await setRead(only.id, true);
+    expect((await call(`/admin/api/submissions/${only.id}`, { method: "DELETE" })).status).toBe(200);
+    expect(await list()).toHaveLength(0);
+  });
+});

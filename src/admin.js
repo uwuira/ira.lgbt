@@ -76,9 +76,7 @@ async function listSubmissions(url, env) {
     .bind(cursor, limit)
     .all();
 
-  const unread = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM submissions WHERE read_at IS NULL",
-  ).first("n");
+  const unread = await unreadCount(env);
 
   return json({
     submissions: results.map(toSubmission),
@@ -140,6 +138,32 @@ async function unblock(request, env) {
     .run();
 
   return json({ ok: true });
+}
+
+const unreadCount = (env) =>
+  env.DB.prepare("SELECT COUNT(*) AS n FROM submissions WHERE read_at IS NULL").first("n");
+
+/**
+ * Marks one message read, or puts it back to unread.
+ *
+ * Returns the resulting state and the new unread total so the admin page can
+ * update the card in place instead of reloading the whole list and losing
+ * your position in it.
+ */
+async function setRead(request, env, id) {
+  const body = await readJson(request);
+  // No body at all means "mark this read" — the common case from the UI.
+  const read = body?.read ?? true;
+
+  const readAt = read ? Date.now() : null;
+
+  const { meta } = await env.DB.prepare("UPDATE submissions SET read_at = ?1 WHERE id = ?2")
+    .bind(readAt, id)
+    .run();
+
+  if (!meta.changes) return json({ error: "not found" }, 404);
+
+  return json({ ok: true, readAt, unread: await unreadCount(env) });
 }
 
 async function deleteSubmission(env, id) {
@@ -213,6 +237,13 @@ export async function handleAdmin(request, env, url) {
   if (path === "/admin/api/unblock") {
     if (method !== "POST") return json({ error: "POST only" }, 405);
     return unblock(request, env);
+  }
+
+  const readToggle = path.match(/^\/admin\/api\/submissions\/([^/]+)\/read$/);
+  if (readToggle) {
+    if (method !== "POST") return json({ error: "POST only" }, 405);
+    const id = decodeId(readToggle[1]);
+    return id === null ? json({ error: "not found" }, 404) : setRead(request, env, id);
   }
 
   const submission = path.match(/^\/admin\/api\/submissions\/([^/]+)$/);

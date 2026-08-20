@@ -123,14 +123,32 @@ function trackHtml(track, { live, staleMs }) {
   );
 }
 
+// Three rows are on screen at any time: either the current track and the two
+// before it, or — with nothing playing — the last three played.
+export const VISIBLE_ROWS = 3;
+
 /** The inner HTML of #spotify-tracks. Empty string when there is nothing. */
 export function renderTracks({ playing, recent = [], staleMs = 0 }) {
-  const rows = [
-    ...(playing ? [trackHtml(playing, { live: true, staleMs })] : []),
-    ...recent.map((track) => trackHtml(track, { live: false, staleMs })),
-  ];
+  // A current track occupies one of the three visible slots.
+  const shown = recent.slice(0, playing ? VISIBLE_ROWS - 1 : VISIBLE_ROWS);
+  const rest = recent.slice(shown.length);
 
-  return rows.join("");
+  const row = (track) => trackHtml(track, { live: false, staleMs });
+
+  const visible = [
+    ...(playing ? [trackHtml(playing, { live: true, staleMs })] : []),
+    ...shown.map(row),
+  ].join("");
+
+  if (!rest.length) return visible;
+
+  return (
+    visible +
+    `<details class="track-more">` +
+    `<summary class="track-more-toggle">${rest.length} more</summary>` +
+    `<div class="track-more-list">${rest.map(row).join("")}</div>` +
+    `</details>`
+  );
 }
 
 export const hasTracks = ({ playing, recent = [] }) => Boolean(playing) || recent.length > 0;

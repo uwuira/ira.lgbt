@@ -62,7 +62,25 @@ function applyState(state) {
 
   const next = shapeOf(state);
   if (next !== shape) {
-    $("#spotify-tracks").innerHTML = renderTracks(state);
+    const list = $("#spotify-tracks");
+
+    // The "17 more" dropdown is rebuilt along with everything else, and a
+    // fresh <details> is closed and scrolled to the top. Left alone, an open
+    // dropdown would slam shut on its own every time one of the recent
+    // timestamps ticked over to a new minute.
+    const previous = list.querySelector("details");
+    const wasOpen = previous?.open ?? false;
+    const scrolled = previous?.querySelector(".track-more-list")?.scrollTop ?? 0;
+
+    list.innerHTML = renderTracks(state);
+
+    const details = list.querySelector("details");
+    if (details && wasOpen) {
+      details.open = true;
+      const scroller = details.querySelector(".track-more-list");
+      if (scroller) scroller.scrollTop = scrolled;
+    }
+
     shape = next;
   }
 

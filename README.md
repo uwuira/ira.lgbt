@@ -31,11 +31,17 @@ npm run deploy
 | | |
 | --- | --- |
 | `GET /` | the site, with the Spotify widget already rendered in |
-| `GET /api/spotify` | current track + recent, plus how stale the snapshot is |
+| `GET /api/spotify` | current track + last 20 played, plus how stale the snapshot is |
 | `POST /api/inbox` | send a message and/or a drawing |
 | `/admin` | the inbox — behind Cloudflare Access |
 
 ## How the Spotify widget stays current
+
+Three rows are always on show: the current track and the two before it, or —
+with nothing playing — the last three played. The rest of the last 20 sit
+behind a dropdown. `RECENT_LIMIT` in [src/spotify.js](src/spotify.js) sets how
+much history is fetched; `VISIBLE_ROWS` in [public/render.js](public/render.js)
+sets how much of it is on screen.
 
 The page is rendered with the widget already on it, so it never pops in. The
 browser then polls every 5 seconds, and the Worker answers from its own cache

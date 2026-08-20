@@ -23,6 +23,14 @@ export function track(name, artist = "some artist") {
   };
 }
 
+/** `n` recently-played entries, newest first, one hour apart. */
+export function recentTracks(n, start = Date.parse("2026-08-19T10:00:00Z")) {
+  return Array.from({ length: n }, (_, i) => [
+    track(`recent-${i + 1}`),
+    new Date(start - i * 3_600_000).toISOString(),
+  ]);
+}
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 

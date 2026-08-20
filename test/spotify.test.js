@@ -7,6 +7,7 @@ import {
   NOW_PLAYING_URL,
   RECENT_URL,
   TOKEN_URL,
+  recentTracks,
   responses,
   stubFetch,
   track,
@@ -19,11 +20,10 @@ beforeEach(async () => {
   }
 });
 
-const twoRecent = () =>
-  responses.recent([
-    [track("second"), "2026-08-19T10:00:00Z"],
-    [track("third"), "2026-08-19T09:00:00Z"],
-  ]);
+// The widget now carries the whole recent history; deciding how much of it to
+// show is the renderer's job, not the API's.
+const twoRecent = () => responses.recent(recentTracks(2));
+const manyRecent = (n = 20) => responses.recent(recentTracks(n));
 
 describe("what the widget reports", () => {
   test("something playing: the current track plus the one before it", async () => {
@@ -36,20 +36,55 @@ describe("what the widget reports", () => {
     const widget = await spotifyWidget(env, { fetchImpl });
 
     expect(widget.playing).toMatchObject({ title: "first", artist: "some artist" });
-    expect(widget.recent.map((t) => t.title)).toEqual(["second"]);
+    expect(widget.recent.map((t) => t.title)).toEqual(["recent-1", "recent-2"]);
   });
 
-  test("nothing playing: the last two tracks and no current one", async () => {
+  test("nothing playing: the history and no current track", async () => {
     const fetchImpl = stubFetch({
       [TOKEN_URL]: responses.token(),
       [NOW_PLAYING_URL]: responses.nothingPlaying(),
-      [RECENT_URL]: twoRecent(),
+      [RECENT_URL]: manyRecent(20),
     });
 
     const widget = await spotifyWidget(env, { fetchImpl });
 
     expect(widget.playing).toBe(null);
-    expect(widget.recent.map((t) => t.title)).toEqual(["second", "third"]);
+    expect(widget.recent).toHaveLength(20);
+    expect(widget.recent[0].title).toBe("recent-1");
+  });
+
+  test("asks Spotify for a full page of history, not just the last couple", async () => {
+    const fetchImpl = stubFetch({
+      [TOKEN_URL]: responses.token(),
+      [NOW_PLAYING_URL]: responses.nothingPlaying(),
+      [RECENT_URL]: manyRecent(20),
+    });
+
+    await spotifyWidget(env, { fetchImpl });
+
+    expect(fetchImpl.callsTo(RECENT_URL)[0].url).toContain("limit=20");
+  });
+
+  test("keeps at most twenty, however many Spotify returns", async () => {
+    const fetchImpl = stubFetch({
+      [TOKEN_URL]: responses.token(),
+      [NOW_PLAYING_URL]: responses.nothingPlaying(),
+      [RECENT_URL]: manyRecent(50),
+    });
+
+    const widget = await spotifyWidget(env, { fetchImpl });
+    expect(widget.recent).toHaveLength(20);
+  });
+
+  test("copes with an account that has barely any history", async () => {
+    const fetchImpl = stubFetch({
+      [TOKEN_URL]: responses.token(),
+      [NOW_PLAYING_URL]: responses.nothingPlaying(),
+      [RECENT_URL]: responses.recent(recentTracks(1)),
+    });
+
+    const widget = await spotifyWidget(env, { fetchImpl });
+    expect(widget.recent).toHaveLength(1);
   });
 
   test("paused counts as not playing", async () => {
@@ -106,7 +141,7 @@ describe("what the widget reports", () => {
     });
 
     const { recent } = await spotifyWidget(env, { fetchImpl });
-    expect(recent[0].playedAt).toBe("2026-08-19T10:00:00Z");
+    expect(Date.parse(recent[0].playedAt)).toBe(Date.parse("2026-08-19T10:00:00Z"));
     expect(recent[0].progressMs).toBeUndefined();
   });
 
