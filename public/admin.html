@@ -166,7 +166,7 @@
       const measure = canvas.getContext("2d");
       // Header, message and stamp all share one font, so the card reads as a
       // single voice instead of three competing ones.
-      const font = "700 34px system-ui, sans-serif";
+      const font = "500 34px system-ui, sans-serif";
       const lineHeight = 48;
       measure.font = font;
       const lines = submission.text ? wrapText(measure, submission.text, contentWidth) : [];
