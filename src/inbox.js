@@ -23,6 +23,69 @@ const json = (body, status = 200, headers = {}) =>
     headers: { "content-type": "application/json; charset=utf-8", ...headers },
   });
 
+const ADMIN_INBOX_URL = "https://ira.lgbt/admin";
+
+function notificationDetails({ text, drawing }) {
+  if (text && drawing) {
+    return {
+      title: "New inbox message and drawing",
+      body: "A new message and drawing were submitted.",
+      tags: "mailbox,art",
+    };
+  }
+
+  if (drawing) {
+    return {
+      title: "New inbox drawing",
+      body: "A new drawing was submitted.",
+      tags: "art",
+    };
+  }
+
+  return {
+    title: "New inbox message",
+    body: "A new message was submitted.",
+    tags: "mailbox",
+  };
+}
+
+export async function notifyNtfy(env, submission, fetchImpl = fetch) {
+  if (!env.NTFY_TOPIC_URL) return;
+
+  let topicUrl;
+  try {
+    topicUrl = new URL(env.NTFY_TOPIC_URL);
+  } catch {
+    console.error("ntfy notification skipped: NTFY_TOPIC_URL is not a valid URL");
+    return;
+  }
+
+  if (topicUrl.protocol !== "https:") {
+    console.error("ntfy notification skipped: NTFY_TOPIC_URL must use HTTPS");
+    return;
+  }
+
+  const notification = notificationDetails(submission);
+  const headers = {
+    "content-type": "text/plain; charset=utf-8",
+    title: notification.title,
+    tags: notification.tags,
+    click: ADMIN_INBOX_URL,
+  };
+  if (env.NTFY_TOKEN) headers.authorization = `Bearer ${env.NTFY_TOKEN}`;
+
+  try {
+    const response = await fetchImpl(topicUrl, {
+      method: "POST",
+      headers,
+      body: notification.body,
+    });
+    if (!response.ok) console.error(`ntfy notification failed: ${response.status}`);
+  } catch {
+    console.error("ntfy notification failed");
+  }
+}
+
 /** Decodes a canvas export — bare base64 or a full `data:` URL — to bytes. */
 function decodeDrawing(value) {
   if (typeof value !== "string" || !value) return { error: "drawing must be a string" };
@@ -120,7 +183,7 @@ async function rateLimit(env, senderId, ipHash, now) {
   return { retryAfter };
 }
 
-export async function handleInbox(request, env) {
+export async function handleInbox(request, env, ctx, fetchImpl = fetch) {
   if (request.method !== "POST") {
     return json({ error: "send it with POST" }, 405, { allow: "POST" });
   }
@@ -186,6 +249,12 @@ export async function handleInbox(request, env) {
     // Don't leave the drawing orphaned in R2 if the row never landed.
     if (drawingKey) await env.DRAWINGS.delete(drawingKey);
     throw error;
+  }
+
+  if (ctx) {
+    ctx.waitUntil(notifyNtfy(env, submission, fetchImpl));
+  } else {
+    await notifyNtfy(env, submission, fetchImpl);
   }
 
   return json({ ok: true, id }, 201, headers);

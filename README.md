@@ -59,11 +59,19 @@ PNGs — all bound in [wrangler.jsonc](wrangler.jsonc), along with
 `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` for the admin login.
 
 Secrets (`npx wrangler secret put NAME`): `SENDER_SECRET`, `IP_SALT`,
-`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`.
+`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, and
+`NTFY_TOPIC_URL`. Set the latter to the complete HTTPS endpoint of a private
+ntfy topic (for example, `https://ntfy.sh/a-long-random-topic`). Set
+`NTFY_TOKEN` too when the topic requires access control.
 
 Changing `SENDER_SECRET` logs every visitor out of their identity, and changing
 `IP_SALT` orphans every existing ip block. Spam limits live in `LIMITS` at the
 top of [src/inbox.js](src/inbox.js).
+
+Accepted inbox submissions post a private notification to ntfy, identifying
+whether it is a message, a drawing, or both, and linking to `/admin`. They
+never include the submission contents; ntfy failures are logged without
+affecting the sender's `201` response.
 
 For local dev, `.dev.vars` carries the same values plus `ADMIN_DEV_BYPASS=true`,
 which opens `/admin` without Access. Never set that one on the deployed Worker.

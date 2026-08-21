@@ -28,6 +28,8 @@ export default defineConfig({
           SPOTIFY_REFRESH_TOKEN: "test-refresh-token",
           ACCESS_TEAM_DOMAIN: "https://ira.cloudflareaccess.com",
           ACCESS_AUD: "aud-tag-for-the-admin-app",
+          NTFY_TOPIC_URL: "",
+          NTFY_TOKEN: "",
         },
       },
     })),

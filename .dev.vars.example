@@ -13,3 +13,9 @@ ADMIN_DEV_BYPASS=true
 # SPOTIFY_CLIENT_ID=
 # SPOTIFY_CLIENT_SECRET=
 # SPOTIFY_REFRESH_TOKEN=
+
+# Optional — notify a private ntfy topic after each accepted inbox submission.
+# Treat the complete topic URL as a secret: anyone who knows it can receive
+# these alerts. NTFY_TOKEN is only needed for an access-controlled topic.
+# NTFY_TOPIC_URL=https://ntfy.sh/a-long-random-topic
+# NTFY_TOKEN=

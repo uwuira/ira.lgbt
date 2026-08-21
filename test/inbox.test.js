@@ -1,8 +1,8 @@
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import worker from "../src/index.js";
-import { LIMITS } from "../src/inbox.js";
+import { LIMITS, notifyNtfy } from "../src/inbox.js";
 import { COOKIE_NAME, hashIp } from "../src/lib/sender.js";
 
 // A real 1x1 PNG — small, but with the magic bytes a real upload would carry.
@@ -33,6 +33,7 @@ const cookieFrom = (res) => res.headers.get("set-cookie")?.split(";")[0];
 
 const rows = async () =>
   (await env.DB.prepare("SELECT * FROM submissions ORDER BY created_at").all()).results;
+
 
 describe("sending a message", () => {
   test("accepts text and stores it", async () => {
@@ -82,6 +83,86 @@ describe("sending a message", () => {
     const nasty = '<script>alert(1)</script> & "quotes"';
     await post({ text: nasty });
     expect((await rows())[0].text).toBe(nasty);
+  });
+});
+
+describe("submission notifications", () => {
+  test.each([
+    [
+      "message",
+      { text: "this must not appear on the lock screen" },
+      {
+        title: "New inbox message",
+        tags: "mailbox",
+        body: "A new message was submitted.",
+      },
+    ],
+    [
+      "drawing",
+      { drawing: PNG_1X1 },
+      {
+        title: "New inbox drawing",
+        tags: "art",
+        body: "A new drawing was submitted.",
+      },
+    ],
+    [
+      "message and drawing",
+      { text: "also private", drawing: PNG_1X1 },
+      {
+        title: "New inbox message and drawing",
+        tags: "mailbox,art",
+        body: "A new message and drawing were submitted.",
+      },
+    ],
+  ])("sends a private ntfy notification for an accepted %s", async (_kind, submission, notification) => {
+    const calls = [];
+    const fetchImpl = async (input, init) => {
+      calls.push({ url: String(input), init });
+      return new Response(null, { status: 200 });
+    };
+
+    await notifyNtfy(
+      {
+        NTFY_TOPIC_URL: "https://ntfy.example.test/ira-lgbt",
+        NTFY_TOKEN: "test-ntfy-token",
+      },
+      submission,
+      fetchImpl,
+    );
+
+    expect(calls).toEqual([
+      {
+        url: "https://ntfy.example.test/ira-lgbt",
+        init: {
+          method: "POST",
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+            title: notification.title,
+            tags: notification.tags,
+            click: "https://ira.lgbt/admin",
+            authorization: "Bearer test-ntfy-token",
+          },
+          body: notification.body,
+        },
+      },
+    ]);
+    if (submission.text) expect(calls[0].init.body).not.toContain(submission.text);
+  });
+
+  test("absorbs ntfy errors", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await notifyNtfy(
+        { NTFY_TOPIC_URL: "https://ntfy.example.test/ira-lgbt" },
+        { text: "saved despite the notification outage" },
+        async () => new Response(null, { status: 503 }),
+      );
+
+      expect(consoleError).toHaveBeenCalledWith("ntfy notification failed: 503");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
 
