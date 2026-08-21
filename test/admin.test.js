@@ -161,6 +161,13 @@ describe("reading the inbox", () => {
     expect(submissions[0].createdAt).toBeGreaterThan(0);
   });
 
+  test("keeps the country out of the payload entirely", async () => {
+    await submit({ text: "hello" }, "198.51.100.4");
+
+    const { submissions } = await (await call("/admin/api/submissions")).json();
+    expect(submissions[0]).not.toHaveProperty("country");
+  });
+
   test("flags a drawing and links it, rather than inlining the bytes", async () => {
     const { id } = await submit({ drawing: PNG_1X1 });
 

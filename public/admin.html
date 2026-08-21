@@ -118,6 +118,11 @@
       return lines;
     }
 
+    const stampText = (ms) =>
+      new Date(ms).toLocaleString("en-GB", {
+        day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+
     const loadImage = (src) =>
       new Promise((resolve, reject) => {
         const image = new Image();
@@ -147,7 +152,7 @@
       const textHeight = lines.length * lineHeight;
       const contentHeight = (lines.length ? textHeight : 0) + (drawing ? drawingHeight : 0) +
         (lines.length && drawing ? 48 : 0);
-      const height = padding + 58 + 32 + contentHeight + padding;
+      const height = padding + 58 + 32 + contentHeight + 74 + padding;
 
       canvas.width = width;
       canvas.height = height;
@@ -160,9 +165,9 @@
       context.font = "700 34px system-ui, sans-serif";
       context.fillText("ira.lgbt", padding, padding + 26);
       context.textAlign = "right";
-      context.fillStyle = "#cfc7d0";
-      context.font = "500 24px system-ui, sans-serif";
-      context.fillText("anonymous inbox", width - padding, padding + 24);
+      context.fillStyle = "#fff";
+      context.font = "700 34px system-ui, sans-serif";
+      context.fillText("anonymous inbox", width - padding, padding + 26);
       context.textAlign = "left";
 
       context.fillStyle = "rgb(255 143 199 / 62%)";
@@ -191,6 +196,10 @@
         roundedRect(context, x, y, drawingWidth, drawingHeight, 20);
         context.stroke();
       }
+
+      context.fillStyle = "#fff";
+      context.font = "700 34px system-ui, sans-serif";
+      context.fillText(stampText(submission.createdAt), padding, height - padding + 10);
 
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("the image could not be created");
@@ -264,9 +273,7 @@
       node.append(
         el("div", {
           className: "ids",
-          textContent:
-            `sender ${submission.senderId} · ip ${submission.ipHash}` +
-            (submission.country ? ` · ${submission.country}` : ""),
+          textContent: `sender ${submission.senderId} · ip ${submission.ipHash}`,
         }),
       );
 

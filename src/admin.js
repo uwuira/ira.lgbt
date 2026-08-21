@@ -55,7 +55,6 @@ function toSubmission(row) {
     senderId: row.sender_id,
     ipHash: row.ip_hash,
     userAgent: row.user_agent,
-    country: row.country,
     readAt: row.read_at,
   };
 }
