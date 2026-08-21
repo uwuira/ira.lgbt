@@ -35,3 +35,23 @@ describe("wrapText", () => {
     expect(wrap("one\n\ntwo", 100)).toEqual(["one", "", "two"]);
   });
 });
+
+// The reply image is drawn on a canvas, so the only thing a worker test can
+// check is the source: every fillText in it must be set up with one font.
+const replyImageSource = adminHtml
+  .replace(/\r\n/g, "\n")
+  .match(/\n {4}async function replyImage[\s\S]*?\n {4}\}\n/)?.[0];
+if (!replyImageSource) throw new Error("replyImage was not found in public/admin.html");
+
+describe("reply image typography", () => {
+  test("every piece of text is drawn in the same font", () => {
+    const fonts = [...replyImageSource.matchAll(/\.font\s*=\s*(.+);/g)].map((m) => m[1]);
+    expect(fonts.length).toBeGreaterThan(1);
+    expect(new Set(fonts).size).toBe(1);
+  });
+
+  test("only one size and weight is spelled out anywhere in the drawing", () => {
+    const sizes = [...replyImageSource.matchAll(/\d+00 \$?\{?\w*\d*\}?px/g)].map((m) => m[0]);
+    expect(sizes.length).toBe(1);
+  });
+});

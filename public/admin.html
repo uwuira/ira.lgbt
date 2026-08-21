@@ -164,9 +164,11 @@
       const padding = 72;
       const contentWidth = width - padding * 2;
       const measure = canvas.getContext("2d");
-      const textSize = submission.text?.length > 420 ? 36 : 44;
-      const lineHeight = Math.round(textSize * 1.42);
-      measure.font = `500 ${textSize}px system-ui, sans-serif`;
+      // Header, message and stamp all share one font, so the card reads as a
+      // single voice instead of three competing ones.
+      const font = "700 34px system-ui, sans-serif";
+      const lineHeight = 48;
+      measure.font = font;
       const lines = submission.text ? wrapText(measure, submission.text, contentWidth) : [];
 
       const maxDrawingHeight = 960;
@@ -188,11 +190,11 @@
       context.fillRect(0, 0, width, height);
 
       context.fillStyle = "#ff8fc7";
-      context.font = "700 34px system-ui, sans-serif";
+      context.font = font;
       context.fillText("ira.lgbt", padding, padding + 26);
       context.textAlign = "right";
       context.fillStyle = "#fff";
-      context.font = "700 34px system-ui, sans-serif";
+      context.font = font;
       context.fillText("anonymous inbox", width - padding, padding + 26);
       context.textAlign = "left";
 
@@ -202,7 +204,7 @@
       let y = padding + 122;
       if (lines.length) {
         context.fillStyle = "#fff8fc";
-        context.font = `500 ${textSize}px system-ui, sans-serif`;
+        context.font = font;
         for (const line of lines) {
           context.fillText(line, padding, y);
           y += lineHeight;
@@ -224,7 +226,7 @@
       }
 
       context.fillStyle = "#fff";
-      context.font = "700 34px system-ui, sans-serif";
+      context.font = font;
       context.fillText(stampText(submission.createdAt), padding, height - padding + 10);
 
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
