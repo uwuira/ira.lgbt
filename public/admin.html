@@ -36,6 +36,17 @@
              border-bottom: 1px solid var(--line); padding: 9px 0; }
     .block code { font-size: 0.78rem; overflow-wrap: anywhere; }
     .empty { color: var(--muted); padding: 20px 0; }
+    dialog.reply-image { width: fit-content; max-width: min(680px, calc(100vw - 32px)); padding: 0; overflow: hidden;
+                          border: 1px solid var(--line); border-radius: 14px; background: #101010; color: #eee; }
+    dialog.reply-image::backdrop { background: rgb(0 0 0 / 78%); backdrop-filter: blur(4px); }
+    .reply-image-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                         padding: 13px 16px; border-bottom: 1px solid var(--line); }
+    .reply-image-head p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+    .reply-image-close { padding: 2px 8px; font-size: 1.2rem; line-height: 1; }
+    .reply-image-preview { display: block; width: auto; height: auto; max-width: min(680px, calc(100vw - 32px));
+                            max-height: calc(100vh - 220px); background: #080808; }
+    .reply-image-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+                           padding: 12px 16px; border-top: 1px solid var(--line); }
   </style>
 </head>
 <body>
@@ -55,6 +66,17 @@
     <h2>blocked</h2>
     <div id="blocks"><p class="empty">loading…</p></div>
   </main>
+  <dialog class="reply-image" id="reply-image-dialog" aria-labelledby="reply-image-title">
+    <div class="reply-image-head">
+      <p id="reply-image-title">reply image</p>
+      <form method="dialog"><button class="reply-image-close" aria-label="close reply image">×</button></form>
+    </div>
+    <img class="reply-image-preview" id="reply-image-preview" alt="ready-to-share inbox message image">
+    <div class="reply-image-actions">
+      <button id="download-reply-image">download PNG</button>
+    </div>
+  </dialog>
+
 
   <script type="module">
     const $ = (id) => document.getElementById(id);
@@ -62,6 +84,134 @@
     const blocksEl = $("blocks");
 
     let cursor = null;
+    const replyImageDialog = $("reply-image-dialog");
+    const replyImagePreview = $("reply-image-preview");
+    const downloadReplyImage = $("download-reply-image");
+    let replyImageUrl = null;
+
+    function roundedRect(context, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + width, y, x + width, y + height, r);
+      context.arcTo(x + width, y + height, x, y + height, r);
+      context.arcTo(x, y + height, x, y, r);
+      context.arcTo(x, y, x + width, y, r);
+      context.closePath();
+    }
+
+    function wrapText(context, text, maxWidth) {
+      const lines = [];
+      for (const paragraph of text.split(/\r?\n/)) {
+        let line = "";
+        for (const character of paragraph) {
+          const candidate = line + character;
+          if (line && context.measureText(candidate).width > maxWidth) {
+            lines.push(line.trimEnd());
+            line = character === " " ? "" : character;
+          } else {
+            line = candidate;
+          }
+        }
+        lines.push(line.trimEnd());
+      }
+      return lines;
+    }
+
+    const loadImage = (src) =>
+      new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("the drawing could not be loaded"));
+        image.src = src;
+      });
+
+    async function replyImage(submission) {
+      const drawing = submission.drawingUrl ? await loadImage(submission.drawingUrl) : null;
+      const canvas = document.createElement("canvas");
+      const width = 1200;
+      const padding = 72;
+      const contentWidth = width - padding * 2;
+      const measure = canvas.getContext("2d");
+      const textSize = submission.text?.length > 420 ? 36 : 44;
+      const lineHeight = Math.round(textSize * 1.42);
+      measure.font = `500 ${textSize}px system-ui, sans-serif`;
+      const lines = submission.text ? wrapText(measure, submission.text, contentWidth) : [];
+
+      const maxDrawingHeight = 960;
+      const drawingScale = drawing
+        ? Math.min(contentWidth / drawing.naturalWidth, maxDrawingHeight / drawing.naturalHeight)
+        : 0;
+      const drawingWidth = drawing ? Math.round(drawing.naturalWidth * drawingScale) : 0;
+      const drawingHeight = drawing ? Math.round(drawing.naturalHeight * drawingScale) : 0;
+      const textHeight = lines.length * lineHeight;
+      const contentHeight = (lines.length ? textHeight : 0) + (drawing ? drawingHeight : 0) +
+        (lines.length && drawing ? 48 : 0);
+      const height = padding + 58 + 32 + contentHeight + padding;
+
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+
+      context.fillStyle = "#000";
+      context.fillRect(0, 0, width, height);
+
+      context.fillStyle = "#ff8fc7";
+      context.font = "700 34px system-ui, sans-serif";
+      context.fillText("ira.lgbt", padding, padding + 26);
+      context.textAlign = "right";
+      context.fillStyle = "#cfc7d0";
+      context.font = "500 24px system-ui, sans-serif";
+      context.fillText("anonymous inbox", width - padding, padding + 24);
+      context.textAlign = "left";
+
+      context.fillStyle = "rgb(255 143 199 / 62%)";
+      context.fillRect(padding, padding + 56, contentWidth, 2);
+
+      let y = padding + 122;
+      if (lines.length) {
+        context.fillStyle = "#fff8fc";
+        context.font = `500 ${textSize}px system-ui, sans-serif`;
+        for (const line of lines) {
+          context.fillText(line, padding, y);
+          y += lineHeight;
+        }
+      }
+
+      if (drawing) {
+        y += lines.length ? 48 : 0;
+        const x = padding + (contentWidth - drawingWidth) / 2;
+        roundedRect(context, x, y, drawingWidth, drawingHeight, 20);
+        context.save();
+        context.clip();
+        context.drawImage(drawing, x, y, drawingWidth, drawingHeight);
+        context.restore();
+        context.strokeStyle = "rgb(255 255 255 / 18%)";
+        context.lineWidth = 2;
+        roundedRect(context, x, y, drawingWidth, drawingHeight, 20);
+        context.stroke();
+      }
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("the image could not be created");
+      return { url: URL.createObjectURL(blob), width, height };
+    }
+
+    function clearReplyImage() {
+      if (replyImageUrl) URL.revokeObjectURL(replyImageUrl);
+      replyImageUrl = null;
+      replyImagePreview.removeAttribute("src");
+      replyImagePreview.style.removeProperty("width");
+    }
+
+    replyImageDialog.addEventListener("close", clearReplyImage);
+    downloadReplyImage.onclick = () => {
+      const link = el("a", { href: replyImagePreview.src, download: "ira-inbox-reply.png" });
+      document.body.append(link);
+      link.click();
+      link.remove();
+    };
+
 
     const api = async (path, options) => {
       const res = await fetch(path, { credentials: "same-origin", ...options });
@@ -121,6 +271,26 @@
       );
 
       const blockSender = el("button", { textContent: "block sender" });
+
+      const makeReplyImage = el("button", { textContent: "make reply image" });
+      makeReplyImage.onclick = async () => {
+        makeReplyImage.disabled = true;
+        try {
+          const image = await replyImage(submission);
+          replyImageUrl = image.url;
+          const maxWidth = Math.min(680, window.innerWidth - 32);
+          const maxHeight = Math.max(1, window.innerHeight - 220);
+          replyImagePreview.style.width =
+            `${Math.min(maxWidth, Math.round(maxHeight * image.width / image.height))}px`;
+          replyImagePreview.src = replyImageUrl;
+          replyImageDialog.showModal();
+        } catch (error) {
+          alert(`couldn't make reply image: ${error.message}`);
+        } finally {
+          makeReplyImage.disabled = false;
+        }
+      };
+
       blockSender.onclick = () => doBlock("sender", submission.senderId);
 
       const blockIp = el("button", { textContent: "block ip" });
@@ -155,7 +325,7 @@
       };
 
       node.append(
-        el("div", { className: "row actions" }, [toggleRead, blockSender, blockIp, remove]),
+        el("div", { className: "row actions" }, [makeReplyImage, toggleRead, blockSender, blockIp, remove]),
       );
       return node;
     }
