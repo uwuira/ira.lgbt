@@ -101,16 +101,42 @@
     }
 
     function wrapText(context, text, maxWidth) {
+      const fits = (line) => context.measureText(line.trimEnd()).width <= maxWidth;
+
+      // Only reached by a word too long for a line of its own: it has to be
+      // broken somewhere, so break it by character.
+      const breakWord = (word) => {
+        const parts = [];
+        let part = "";
+        for (const character of word) {
+          if (part && !fits(part + character)) {
+            parts.push(part);
+            part = character;
+          } else {
+            part += character;
+          }
+        }
+        parts.push(part);
+        return parts;
+      };
+
       const lines = [];
       for (const paragraph of text.split(/\r?\n/)) {
         let line = "";
-        for (const character of paragraph) {
-          const candidate = line + character;
-          if (line && context.measureText(candidate).width > maxWidth) {
+        // Words carry their trailing spaces along, so wrapping keeps whatever
+        // spacing the sender typed.
+        for (const word of paragraph.match(/\s*\S+\s*/g) ?? []) {
+          if (line && !fits(line + word)) {
             lines.push(line.trimEnd());
-            line = character === " " ? "" : character;
+            line = word.trimStart();
           } else {
-            line = candidate;
+            line += word;
+          }
+
+          if (!fits(line)) {
+            const parts = breakWord(line);
+            line = parts.pop();
+            for (const part of parts) lines.push(part.trimEnd());
           }
         }
         lines.push(line.trimEnd());
