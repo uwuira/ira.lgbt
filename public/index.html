@@ -8,7 +8,7 @@
   <link rel="icon" href="/favicon.jpg" type="image/jpg">
 
   <link rel="canonical" href="https://ira.lgbt/">
-  <meta name="theme-color" content="#ff8fc7">
+  <meta name="theme-color" content="#ade6f7">
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ira.lgbt">
@@ -28,20 +28,20 @@
   <meta name="twitter:image" content="https://ira.lgbt/favicon.jpg">
   <meta name="twitter:image:alt" content="ira's avatar">
   <style>
-    :root { color-scheme: dark; --pink: #ff8fc7; --muted: #9a9a9a; }
+    :root { color-scheme: dark; --accent: #ade6f7; --muted: #9a9a9a; }
     * { box-sizing: border-box; }
     body { margin: 0; background: #000; color: #eee; font: 16px/1.65 system-ui, sans-serif; }
     main { width: min(720px, calc(100% - 36px)); margin: 72px auto; }
     h1, h2 { line-height: 1.2; }
     h1 { margin-bottom: 8px; font-size: 2.35rem; }
-    h2 { margin-top: 42px; font-size: 1.15rem; color: var(--pink); }
-    a { color: var(--pink); text-decoration: none; }
+    h2 { margin-top: 42px; font-size: 1.15rem; color: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .accent { color: var(--pink); }
+    .accent { color: var(--accent); }
     .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     .muted { color: var(--muted); }
     .likes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 24px; padding: 0; list-style: none; }
-    .likes li::before { content: "♡ "; color: var(--pink); }
+    .likes li::before { content: "♡ "; color: var(--accent); }
 
     /* widgets */
     .card { border: 1px solid #232323; background: #0d0d0d; border-radius: 12px; padding: 16px; }
@@ -51,12 +51,12 @@
     .track-art-blank { background: #1c1c1c; }
     .track-lines { min-width: 0; }
     .track-badge { font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-    .track-live .track-badge { color: var(--pink); }
+    .track-live .track-badge { color: var(--accent); }
     .track-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .track-meta { font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .track-progress { grid-column: 1 / -1; margin-top: 6px; }
     .track-bar { height: 3px; background: #232323; border-radius: 2px; overflow: hidden; }
-    .track-bar-fill { height: 100%; background: var(--pink); border-radius: 2px; }
+    .track-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
     .track-times { display: flex; justify-content: space-between; font-size: 0.74rem;
                    font-variant-numeric: tabular-nums; margin-top: 4px; }
     .track-more { border-top: 1px solid #1c1c1c; margin-top: 8px; }
@@ -65,13 +65,13 @@
     .track-more-toggle::-webkit-details-marker { display: none; }
     .track-more-toggle::before { content: "▸"; display: inline-block; width: 1.1em; }
     .track-more[open] > .track-more-toggle::before { content: "▾"; }
-    .track-more-toggle:hover { color: var(--pink); }
-    .track-more-toggle:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+    .track-more-toggle:hover { color: var(--accent); }
+    .track-more-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .track-more-list { max-height: 420px; overflow-y: auto; }
 
     #inbox-text { width: 100%; min-height: 92px; resize: vertical; padding: 10px 12px; border-radius: 8px;
                   border: 1px solid #232323; background: #080808; color: #eee; font: inherit; }
-    #inbox-text:focus-visible, #draw:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+    #inbox-text:focus-visible, #draw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
     .tools label { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     #draw { width: 100%; aspect-ratio: 8 / 5; border: 1px solid #232323; border-radius: 8px;
@@ -79,9 +79,9 @@
     #pen-color { width: 34px; height: 28px; padding: 0; border: 1px solid #232323; background: none; border-radius: 6px; }
     button, summary.button { font: inherit; font-size: 0.85rem; padding: 6px 13px; border-radius: 7px;
              border: 1px solid #232323; background: #171717; color: #ddd; cursor: pointer; }
-    button:hover, summary.button:hover { border-color: var(--pink); color: var(--pink); }
+    button:hover, summary.button:hover { border-color: var(--accent); color: var(--accent); }
     button:disabled { opacity: 0.45; cursor: default; border-color: #232323; color: #ddd; }
-    button[aria-pressed="true"] { border-color: var(--pink); color: var(--pink); }
+    button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
     #inbox-send { padding: 8px 20px; }
     .inbox-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
     .inbox-status { font-size: 0.88rem; color: var(--muted); }
@@ -153,7 +153,7 @@
         <details class="draw">
           <summary class="button">✎ draw something</summary>
           <div class="tools">
-            <label>colour <input type="color" id="pen-color" value="#ff8fc7"></label>
+            <label>colour <input type="color" id="pen-color" value="#ade6f7"></label>
             <label>size <input type="range" id="pen-size" min="1" max="24" value="4"></label>
             <button type="button" id="eraser" aria-pressed="false">eraser</button>
             <button type="button" id="undo" disabled>undo</button>
